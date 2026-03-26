@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>iBoto Games Mini App</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script type="text/javascript" src="https://ff.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=P9TLBk8bJkDWMMvASzHa4-liFY0MLGz_8F1gzTENxA9G2gIL_NoViyW7w9q9SAZT_RQgp7KAHk0tkWIi93aPZSFROv5toMXmELSRqvXwgLcNHsWpMuvWPiMlA_JoC0lQEVUK1x5Av-9isaOpomr9ikQ0NQLIl2qA_-fJeQJUGnAi_Yrur4VPqweEx9Euj1NGEeAFNRa2TBRpKT3v7UGC8tALoeRXQ6mPbbpg_FgVdx7WFzYB_qsJU_8dfHo8qAN52gvt3X8108ibmwWnsm_htA" charset="UTF-8"></script><script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     :root{
       --bg:#0f1720; --card:#192635; --card2:#213346; --line:#30475c; --text:#e8f4fd; --muted:#8bacc8;
@@ -48,27 +48,19 @@
     .small{font-size:12px}
     .mono{font-family:Consolas,monospace}
     .hidden{display:none !important}
-    .err{color:#ffb3b3}
+    .error{background:#40202a;border:1px solid #7a3648;color:#ffd7df;border-radius:12px;padding:12px;margin-bottom:12px}
   </style>
 </head>
 <body>
 <div class="app">
+  <div id="topError" class="error hidden"></div>
+
   <div class="card" style="margin-bottom:12px">
-    <h1>🎮 iBoto Games Mini App</h1>
-    <p class="muted">Shared rooms from Telegram • Tic-Tac-Toe • Memory Match • Checkers • room chat</p>
+    <h1>🎮 iBoto Games</h1>
+    <p class="muted">Shared rooms from Telegram • Tic-Tac-Toe • Memory Match • Checkers</p>
   </div>
 
   <div class="row">
-    <div class="card grow col">
-      <h2>Backend</h2>
-      <div class="toolbar">
-        <input id="apiBaseInput" class="input" placeholder="https://your-api-tunnel.trycloudflare.com" />
-        <button id="btnSaveApi" class="btn">Save Backend URL</button>
-      </div>
-      <div id="apiStatus" class="small muted"></div>
-      <div id="apiError" class="small err"></div>
-    </div>
-
     <div class="card grow col">
       <h2>Room</h2>
       <div class="toolbar">
@@ -84,9 +76,8 @@
         <input id="roomInput" class="input mono" placeholder="Room ID" />
         <button id="btnJoin" class="btn good">Join Room</button>
         <button id="btnRefresh" class="btn">Refresh</button>
-        <button id="btnShare" class="btn warn">Copy Room Link</button>
       </div>
-      <div class="small muted">Supports start params like <span class="mono">ttt_g_-100123</span>, <span class="mono">memory_g_-100123</span>, <span class="mono">checkers_g_-100123</span>, <span class="mono">all_g_-100123</span>, <span class="mono">r_roomid</span>.</div>
+      <div class="small muted">This app must be opened from the Telegram bot button so your Telegram user is available automatically.</div>
       <div id="roomMeta" class="small muted"></div>
     </div>
 
@@ -121,105 +112,63 @@ if (tg) {
     tg.ready();
     tg.expand();
     tg.disableVerticalSwipes?.();
-  } catch(e){}
+  } catch(e) {}
 }
 
-const STORAGE_API_KEY = "IBOTO_MINIAPP_API_BASE";
-const STORAGE_DEV_USER_KEY = "IBOTO_MINIAPP_DEV_USER";
+function qp(name) {
+  return new URLSearchParams(location.search).get(name);
+}
 
-function el(id){ return document.getElementById(id); }
-function h(s){ return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
-function nowTs(){ return Math.floor(Date.now()/1000); }
+const CONFIG = {
+  API_BASE: (qp("api_base") || "").replace(/\/$/, ""),
+  BOT_USERNAME: qp("bot_username") || "i_boto_main_bot"
+};
 
+const el = id => document.getElementById(id);
 const state = {
   me: null,
   room: null,
   pollTimer: null,
   startParam: null,
-  apiBase: ""
+  autoCreating: false,
 };
 
-function normalizeBase(u){
-  return String(u || "").trim().replace(/\/+$/, "");
+function showError(msg) {
+  const box = el("topError");
+  box.textContent = msg;
+  box.classList.remove("hidden");
 }
 
-function getStartParam(){
-  const tgParam = tg?.initDataUnsafe?.start_param || null;
-  if (tgParam) return tgParam;
-  const qs = new URLSearchParams(location.search);
-  return qs.get("startapp") || qs.get("tgWebAppStartParam") || null;
+function hideError() {
+  el("topError").classList.add("hidden");
 }
 
-function resolveApiBase(){
-  const qs = new URLSearchParams(location.search);
-  const q = normalizeBase(qs.get("api") || "");
-  if (q) {
-    localStorage.setItem(STORAGE_API_KEY, q);
-    return q;
+function api(path, opts={}) {
+  if (!CONFIG.API_BASE) {
+    return Promise.reject(new Error("Backend API URL is missing in this Mini App link."));
   }
-
-  const saved = normalizeBase(localStorage.getItem(STORAGE_API_KEY) || "");
-  if (saved) return saved;
-
-  // If page is served from the backend itself, same origin works.
-  if (location.origin && !location.origin.includes("github.io")) {
-    return normalizeBase(location.origin);
-  }
-
-  return "";
-}
-
-function setApiStatus(){
-  el("apiBaseInput").value = state.apiBase || "";
-  el("apiStatus").innerHTML = state.apiBase
-    ? `Backend API: <span class="mono">${h(state.apiBase)}</span>`
-    : `No backend URL configured yet.`;
-  el("apiError").textContent = state.apiBase ? "" : "Set your backend HTTPS tunnel URL first.";
-}
-
-async function api(path, opts = {}){
-  if (!state.apiBase) {
-    throw new Error("Backend API URL is not configured");
-  }
-
-  const url = state.apiBase + path;
-  const resp = await fetch(url, {
-    headers: { "Content-Type": "application/json" },
+  return fetch(CONFIG.API_BASE + path, {
+    headers: {"Content-Type":"application/json"},
     ...opts
-  });
-
-  const raw = await resp.text();
-  let data = {};
-  try { data = raw ? JSON.parse(raw) : {}; } catch(e) { data = {}; }
-
-  if (!resp.ok || data.ok === false) {
-    throw new Error(data.error || raw || ("HTTP " + resp.status));
-  }
-  return data;
-}
-
-function getDevUser(){
-  try {
-    const raw = localStorage.getItem(STORAGE_DEV_USER_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && Number(parsed.id) > 0) return parsed;
+  }).then(async r => {
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || j.ok === false) {
+      throw new Error(j.error || ("HTTP " + r.status));
     }
-  } catch(e){}
-
-  const uid = Math.floor(100000000 + Math.random() * 900000000);
-  const dev = {
-    id: uid,
-    username: "local_debug_user",
-    first_name: "Local",
-    last_name: "Debug",
-    display_name: "Local Debug",
-    photo_url: "",
-    premium: false
-  };
-  localStorage.setItem(STORAGE_DEV_USER_KEY, JSON.stringify(dev));
-  return dev;
+    return j;
+  });
 }
+
+function h(s){
+  return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function initials(name){
+  const parts = String(name||"P").trim().split(/\s+/).slice(0,2);
+  return parts.map(x=>x[0]?.toUpperCase()||"").join("") || "P";
+}
+
+function nowTs(){ return Math.floor(Date.now()/1000); }
 
 function getTelegramUser(){
   const u = tg?.initDataUnsafe?.user;
@@ -234,69 +183,20 @@ function getTelegramUser(){
       premium: !!u.is_premium
     };
   }
-  return getDevUser();
+  return null;
 }
 
-function initials(name){
-  const parts = String(name || "P").trim().split(/\s+/).slice(0,2);
-  return parts.map(x => x[0]?.toUpperCase() || "").join("") || "P";
-}
-
-function fillFromStartParam(){
-  const qs = new URLSearchParams(location.search);
-
-  const qGroupId = qs.get("group_id");
-  const qRoomId = qs.get("room_id");
-  const qGame = qs.get("game");
-
-  if (qGroupId) el("groupIdInput").value = qGroupId;
-  if (qRoomId) el("roomInput").value = qRoomId;
-  if (qGame && ["ttt","memory","checkers"].includes(qGame)) {
-    el("gameSelect").value = qGame;
-  }
-
-  const sp = state.startParam || "";
-
-  if (sp.startsWith("r_")) {
-    el("roomInput").value = sp.slice(2);
-    return;
-  }
-
-  const prefixes = [
-    ["ttt_g_", "ttt"],
-    ["memory_g_", "memory"],
-    ["checkers_g_", "checkers"],
-    ["all_g_", null],
-    ["g_", null]
-  ];
-
-  for (const [prefix, game] of prefixes) {
-    if (sp.startsWith(prefix)) {
-      const gid = sp.slice(prefix.length);
-      el("groupIdInput").value = gid;
-      if (game) el("gameSelect").value = game;
-      return;
-    }
-  }
-}
-
-function setStatus(txt){
-  el("status").innerHTML = txt;
-}
+function setStatus(txt){ el("status").innerHTML = txt; }
 
 function renderPlayers(room){
   const root = el("players");
   const players = room?.players || [];
   root.innerHTML = players.map((p, idx) => {
-    const photo = p.photo_url
-      ? `<img class="avatar" src="${h(p.photo_url)}" alt="">`
-      : `<div class="avatar ph">${h(initials(p.display_name || p.first_name || "P"))}</div>`;
-
-    const role =
-      room.game === "checkers" ? (idx === 0 ? "Red" : "Black") :
-      room.game === "ttt" ? (idx === 0 ? "X" : "O") :
-      (idx === 0 ? "Player 1" : "Player 2");
-
+    const photo = p.photo_url ? `<img class="avatar" src="${h(p.photo_url)}" alt="">` :
+      `<div class="avatar ph">${h(initials(p.display_name || p.first_name || "P"))}</div>`;
+    const role = room.game === "checkers" ? (idx===0 ? "Red" : "Black") :
+                 room.game === "ttt" ? (idx===0 ? "X" : "O") :
+                 (idx===0 ? "Player 1" : "Player 2");
     return `
       <div class="player">
         ${photo}
@@ -343,16 +243,14 @@ function renderTtt(room){
   const board = s.board || Array(9).fill(".");
   const root = document.createElement("div");
   root.className = "grid3";
-
   board.forEach((v, i) => {
     const b = document.createElement("button");
     b.className = "cell";
     b.textContent = v === "." ? "·" : v;
     b.disabled = room.status !== "playing" || v !== ".";
-    b.onclick = () => sendGameAction({ cell: i });
+    b.onclick = () => sendGameAction({cell:i});
     root.appendChild(b);
   });
-
   const meIdx = myPlayerIndex(room);
   const mySide = meIdx === 0 ? "X" : meIdx === 1 ? "O" : "?";
   setStatus(`Turn: <b>${h(s.turn || "?")}</b> • Your side: <b>${h(mySide)}</b> ${s.winner ? "• Winner: <b>"+h(String(s.winner))+"</b>" : ""}`);
@@ -364,16 +262,14 @@ function renderMemory(room){
   const tiles = s.tiles || [];
   const root = document.createElement("div");
   root.className = "grid4";
-
   tiles.forEach((t, i) => {
     const b = document.createElement("button");
     b.className = "mem";
     b.textContent = t.matched ? "✅" : t.revealed ? t.value : "🟦";
     b.disabled = room.status !== "playing" || t.matched || (s.lock_until && s.lock_until > nowTs());
-    b.onclick = () => sendGameAction({ index: i });
+    b.onclick = () => sendGameAction({index:i});
     root.appendChild(b);
   });
-
   const meIdx = myPlayerIndex(room);
   const scores = s.scores || [0,0];
   const turnText = (s.turn === 0 ? "Player 1" : "Player 2");
@@ -388,7 +284,6 @@ function renderCheckers(room){
   const targets = s.valid_targets || [];
   const root = document.createElement("div");
   root.className = "grid8";
-
   for(let r=0;r<8;r++){
     for(let c=0;c<8;c++){
       const idx = r*8+c;
@@ -396,15 +291,16 @@ function renderCheckers(room){
       const sq = document.createElement("button");
       sq.className = `sq ${dark ? "dark":"light"} ${selected===idx ? "sel":""} ${targets.includes(idx) ? "target":""}`;
       const v = board[r][c];
-      sq.textContent = ({ ".":"", "r":"🔴", "R":"❤️", "b":"⚫️", "B":"🖤" })[v] ?? "";
+      sq.textContent = ({
+        ".":"", "r":"🔴", "R":"❤️", "b":"⚫️", "B":"🖤"
+      })[v] ?? "";
       sq.onclick = () => {
-        if (targets.includes(idx)) sendGameAction({ type:"checkers_move", index:idx });
-        else sendGameAction({ type:"checkers_select", index:idx });
+        if (targets.includes(idx)) sendGameAction({type:"checkers_move", index:idx});
+        else sendGameAction({type:"checkers_select", index:idx});
       };
       root.appendChild(sq);
     }
   }
-
   const meIdx = myPlayerIndex(room);
   const mySide = meIdx === 0 ? "R" : meIdx === 1 ? "B" : "?";
   setStatus(`Turn: <b>${h(s.turn || "?")}</b> • Your side: <b>${h(mySide)}</b> ${s.winner ? "• Winner: <b>"+h(String(s.winner))+"</b>" : ""}`);
@@ -417,10 +313,8 @@ function renderGame(room){
     memory:"🧠 Memory Match",
     checkers:"🔴⚫ Checkers"
   })[room.game] || "Game";
-
   const wrap = el("boardWrap");
   wrap.innerHTML = "";
-
   if (!room) return;
   if (room.game === "ttt") wrap.appendChild(renderTtt(room));
   if (room.game === "memory") wrap.appendChild(renderMemory(room));
@@ -454,7 +348,6 @@ function renderAll(){
 async function createRoom(){
   const game = el("gameSelect").value;
   const groupId = el("groupIdInput").value.trim();
-
   const res = await api("/api/room/create", {
     method:"POST",
     body: JSON.stringify({
@@ -464,7 +357,6 @@ async function createRoom(){
       start_param: state.startParam || ""
     })
   });
-
   state.room = res.room;
   el("roomInput").value = res.room.room_id;
   renderAll();
@@ -472,9 +364,8 @@ async function createRoom(){
 }
 
 async function joinRoom(){
-  const roomId = el("roomInput").value.trim();
+  const roomId = el("roomInput").value.trim() || qp("room_id") || "";
   if (!roomId) throw new Error("Enter room id");
-
   const res = await api("/api/room/join", {
     method:"POST",
     body: JSON.stringify({
@@ -483,17 +374,16 @@ async function joinRoom(){
       start_param: state.startParam || ""
     })
   });
-
   state.room = res.room;
+  el("roomInput").value = res.room.room_id;
   renderAll();
   startPolling();
 }
 
 async function sendChat(){
-  if (!state.room?.room_id) throw new Error("Join a room first");
+  if (!state.room?.room_id) return;
   const text = el("chatInput").value.trim();
   if (!text) return;
-
   await api("/api/room/chat", {
     method:"POST",
     body: JSON.stringify({
@@ -502,14 +392,12 @@ async function sendChat(){
       text
     })
   });
-
   el("chatInput").value = "";
   await refreshRoom();
 }
 
 async function sendGameAction(action){
-  if (!state.room?.room_id) throw new Error("Join a room first");
-
+  if (!state.room?.room_id) return;
   await api("/api/room/action", {
     method:"POST",
     body: JSON.stringify({
@@ -518,80 +406,71 @@ async function sendGameAction(action){
       action
     })
   });
-
   await refreshRoom();
 }
 
-function copyRoomLink(){
-  if (!state.room?.room_id) {
-    alert("Create or join a room first");
-    return;
-  }
-
-  const url = new URL(location.href);
-  url.searchParams.set("room_id", state.room.room_id);
-  url.searchParams.set("startapp", "r_" + state.room.room_id);
-  if (state.apiBase) url.searchParams.set("api", state.apiBase);
-
-  navigator.clipboard.writeText(url.toString()).then(() => {
-    if (tg?.showPopup) tg.showPopup({title:"Copied", message:"Room link copied"});
-    else alert("Room link copied");
-  });
-}
-
-async function testApiHealth(){
-  if (!state.apiBase) {
-    setApiStatus();
-    return;
-  }
-
+async function maybeAutoCreate(){
+  if (qp("autocreate") !== "1") return;
+  if (state.autoCreating) return;
+  if (state.room?.room_id) return;
+  const game = qp("game") || el("gameSelect").value;
+  const gid = qp("group_id") || el("groupIdInput").value;
+  if (!game || !gid) return;
+  state.autoCreating = true;
   try {
-    const res = await fetch(state.apiBase + "/api/health");
-    const raw = await res.text();
-    let j = {};
-    try { j = raw ? JSON.parse(raw) : {}; } catch(e) {}
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    el("apiError").textContent = "";
-    el("apiStatus").innerHTML = `Backend API: <span class="mono">${h(state.apiBase)}</span> • Health: OK`;
+    el("gameSelect").value = game;
+    el("groupIdInput").value = gid;
+    await createRoom();
   } catch (e) {
-    el("apiError").textContent = "Backend health check failed: " + e.message;
+    console.error(e);
+    showError(e.message || String(e));
+  } finally {
+    state.autoCreating = false;
   }
-}
-
-function saveApiBase(){
-  state.apiBase = normalizeBase(el("apiBaseInput").value);
-  if (state.apiBase) localStorage.setItem(STORAGE_API_KEY, state.apiBase);
-  else localStorage.removeItem(STORAGE_API_KEY);
-  setApiStatus();
-  testApiHealth().catch(console.error);
 }
 
 function init(){
-  state.apiBase = resolveApiBase();
   state.me = getTelegramUser();
-  state.startParam = getStartParam();
+  state.startParam = tg?.initDataUnsafe?.start_param || null;
 
-  setApiStatus();
-  fillFromStartParam();
-
-  el("btnSaveApi").onclick = saveApiBase;
-  el("btnCreate").onclick = () => createRoom().catch(e => alert(e.message));
-  el("btnJoin").onclick = () => joinRoom().catch(e => alert(e.message));
-  el("btnRefresh").onclick = () => refreshRoom().catch(e => alert(e.message));
-  el("btnSend").onclick = () => sendChat().catch(e => alert(e.message));
-  el("btnShare").onclick = copyRoomLink;
-
-  el("chatInput").addEventListener("keydown", ev => {
-    if (ev.key === "Enter") sendChat().catch(console.error);
-  });
-
-  if (state.startParam?.startsWith("r_")) {
-    joinRoom().catch(console.error);
+  if (!CONFIG.API_BASE) {
+    showError("Backend API URL is missing in this app link.");
+    return;
   }
 
-  renderPlayers({players:[state.me], game:"ttt"});
-  el("roomMeta").textContent = state.startParam ? ("Start param: " + state.startParam) : "";
-  testApiHealth().catch(console.error);
+  if (!state.me || !state.me.id) {
+    showError("Open this app from the Telegram bot button, not from a normal browser tab.");
+    return;
+  }
+
+  hideError();
+
+  const qGame = qp("game");
+  const qGroup = qp("group_id");
+  const qRoom = qp("room_id");
+
+  if (qGame && ["ttt","memory","checkers"].includes(qGame)) {
+    el("gameSelect").value = qGame;
+  }
+  if (qGroup) el("groupIdInput").value = qGroup;
+  if (qRoom) el("roomInput").value = qRoom;
+
+  el("btnCreate").onclick = () => createRoom().catch(e => showError(e.message));
+  el("btnJoin").onclick = () => joinRoom().catch(e => showError(e.message));
+  el("btnRefresh").onclick = () => refreshRoom().catch(e => showError(e.message));
+  el("btnSend").onclick = () => sendChat().catch(e => showError(e.message));
+  el("chatInput").addEventListener("keydown", ev => {
+    if (ev.key === "Enter") sendChat().catch(e => showError(e.message));
+  });
+
+  renderPlayers({players:[state.me]});
+  el("roomMeta").textContent = qGroup ? ("Group: " + qGroup) : "";
+
+  if (qRoom) {
+    joinRoom().catch(e => showError(e.message));
+  } else {
+    maybeAutoCreate().catch(e => showError(e.message));
+  }
 }
 
 init();
