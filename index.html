@@ -4,118 +4,237 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>iBoto Games Mini App</title>
-  <script type="text/javascript" src="https://ff.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=sTB_qwZhb27l8wooDJQJ6U7aLHClJTfR3RQAqavs65hBBNfi8Pn_BtDHI0SXmpwnrbXgbdY9D6pk84l182or5CiITfG9oHmDt9Gr2ko0mSBsWkVG2CFjcEeMcgV1olmxlfhfO5gTuj0AU44-JiqW5oe35ZAPWJ6UqHS9pYRK_PZchdjFnSLV9W898RPvprt1Dfs4_qiVau90LCZd7B-60PM9VkmV6uBOpunTsU-oFz7a5zCZ5ZIK4lJDa_y35kwOF8RH-ZnHUrdMzBnCTum1Jg" charset="UTF-8"></script><script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     :root{
-      --bg:#0f1720; --card:#192635; --card2:#213346; --line:#30475c; --text:#e8f4fd; --muted:#8bacc8;
-      --accent:#55c8ff; --good:#44d67f; --warn:#ffd166; --bad:#ff6b6b; --dark:#52616f; --light:#d9e2ec;
+      --bg:#0f1720; --card:#192635; --card2:#213346; --line:#30475c;
+      --text:#e8f4fd; --muted:#8bacc8; --accent:#55c8ff; --good:#44d67f;
+      --warn:#ffd166; --bad:#ff6b6b; --dark:#52616f; --light:#d9e2ec;
     }
-    *{box-sizing:border-box}
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
     body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
     .app{max-width:980px;margin:0 auto;padding:14px}
     .row{display:flex;gap:12px;flex-wrap:wrap}
     .col{display:flex;flex-direction:column;gap:12px}
     .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px}
-    .grow{flex:1 1 320px}
+    .grow{flex:1 1 300px}
     h1,h2,h3,p{margin:0}
     .muted{color:var(--muted)}
-    .btn,.input,.select{border-radius:12px;border:1px solid var(--line);padding:11px 12px;background:var(--card2);color:var(--text);font-size:15px}
-    .btn{cursor:pointer;font-weight:700}
+    .input,.select{
+      border-radius:12px;border:1px solid var(--line);padding:10px 12px;
+      background:var(--card2);color:var(--text);font-size:15px;width:100%
+    }
+    .input:focus,.select:focus{outline:2px solid var(--accent);border-color:var(--accent)}
+    .btn{
+      cursor:pointer;font-weight:700;border-radius:12px;border:1px solid var(--line);
+      padding:10px 16px;background:var(--card2);color:var(--text);font-size:14px;
+      white-space:nowrap;transition:opacity .15s
+    }
+    .btn:active{opacity:.75}
     .btn.primary{background:var(--accent);color:#08212d;border-color:#79d8ff}
     .btn.good{background:var(--good);color:#072915;border-color:#5ae892}
     .btn.warn{background:var(--warn);color:#382700;border-color:#ffe08a}
-    .btn.bad{background:var(--bad);color:white;border-color:#ff9a9a}
-    .btn:disabled{opacity:.5;cursor:not-allowed}
-    .toolbar{display:flex;gap:8px;flex-wrap:wrap}
-    .players{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+    .btn.bad{background:var(--bad);color:#fff;border-color:#ff9a9a}
+    .btn:disabled{opacity:.4;cursor:not-allowed}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .field{display:flex;flex-direction:column;gap:4px;flex:1 1 140px}
+    .label{font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+
+    /* Rooms list */
+    #roomList{display:flex;flex-direction:column;gap:6px;max-height:240px;overflow-y:auto}
+    .room-item{
+      display:flex;justify-content:space-between;align-items:center;gap:8px;
+      background:var(--card2);border:1px solid var(--line);border-radius:10px;
+      padding:8px 12px;cursor:pointer;transition:border-color .15s
+    }
+    .room-item:hover{border-color:var(--accent)}
+    .room-item.active{border-color:var(--accent);background:#1d3048}
+    .ri-badge{
+      font-size:11px;padding:2px 7px;border-radius:999px;font-weight:700;
+      background:#253748;border:1px solid var(--line);
+    }
+
+    /* Players */
+    .players{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
     .player{display:flex;gap:10px;align-items:center;background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:10px}
-    .avatar{width:52px;height:52px;border-radius:50%;object-fit:cover;background:#101820;border:1px solid var(--line)}
-    .avatar.ph{display:flex;align-items:center;justify-content:center;font-weight:700}
-    .pill{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;background:#253748;border:1px solid var(--line);font-size:12px}
+    .avatar{width:50px;height:50px;border-radius:50%;object-fit:cover;background:#101820;border:1px solid var(--line);flex-shrink:0}
+    .avatar.ph{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px}
+    .pill{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;background:#253748;border:1px solid var(--line);font-size:11px}
+
+    /* TTT */
     .grid3{display:grid;grid-template-columns:repeat(3,84px);gap:8px;justify-content:center}
-    .cell{width:84px;height:84px;font-size:30px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--text);cursor:pointer}
-    .grid4{display:grid;grid-template-columns:repeat(4,70px);gap:8px;justify-content:center}
-    .mem{width:70px;height:70px;font-size:27px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--text);cursor:pointer}
-    .grid8{display:grid;grid-template-columns:repeat(8,42px);gap:0;justify-content:center;width:max-content;border:1px solid var(--line);border-radius:10px;overflow:hidden}
-    .sq{width:42px;height:42px;border:none;font-size:22px;cursor:pointer}
-    .sq.light{background:var(--light);color:#000}
-    .sq.dark{background:var(--dark);color:white}
+    .cell{width:84px;height:84px;font-size:32px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--text);cursor:pointer;transition:background .1s}
+    .cell:hover:not(:disabled){background:#2b4560}
+
+    /* Memory */
+    .grid4{display:grid;grid-template-columns:repeat(4,72px);gap:8px;justify-content:center}
+    .mem{width:72px;height:72px;font-size:28px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--text);cursor:pointer;transition:background .1s}
+    .mem:hover:not(:disabled){background:#2b4560}
+
+    /* Checkers */
+    .grid8{display:grid;grid-template-columns:repeat(8,44px);gap:0;justify-content:center;width:max-content;border:2px solid var(--line);border-radius:10px;overflow:hidden}
+    .sq{width:44px;height:44px;border:none;font-size:22px;cursor:pointer;padding:0;transition:filter .1s}
+    .sq.light{background:#d9e2ec;color:#000}
+    .sq.dark{background:#52616f;color:#fff}
     .sq.sel{outline:3px solid var(--warn);outline-offset:-3px}
     .sq.target{outline:3px solid var(--good);outline-offset:-3px}
-    .chatbox{height:260px;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:8px;background:var(--card2);border:1px solid var(--line);border-radius:12px}
-    .msg{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px}
-    .msg.me{border-color:#5cb8d8}
+    .sq:hover{filter:brightness(1.15)}
+
+    /* Chat */
+    .chatbox{height:260px;overflow:auto;display:flex;flex-direction:column;gap:6px;padding:8px;background:var(--card2);border:1px solid var(--line);border-radius:12px}
+    .msg{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+    .msg.me{border-color:#5cb8d8;background:#1a2f42}
     .small{font-size:12px}
     .mono{font-family:Consolas,monospace}
-    .hidden{display:none !important}
+    .hidden{display:none!important}
+    .badge-status{
+      display:inline-flex;align-items:center;gap:5px;
+      padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;
+      border:1px solid;
+    }
+    .badge-status.waiting{background:#1a2e1a;border-color:var(--warn);color:var(--warn)}
+    .badge-status.playing{background:#0f2318;border-color:var(--good);color:var(--good)}
+    .badge-status.finished{background:#2a1a1a;border-color:var(--bad);color:var(--bad)}
+    #status{min-height:24px}
+    .err{color:var(--bad);font-size:13px;padding:4px 0}
+    #globalErr{min-height:20px}
+    .sep{height:1px;background:var(--line);margin:4px 0}
+    #boardWrap{overflow-x:auto}
   </style>
 </head>
 <body>
 <div class="app">
+
+  <!-- Header -->
   <div class="card" style="margin-bottom:12px">
-    <h1>🎮 iBoto Games Mini App</h1>
-    <p class="muted">Shared rooms from Telegram • Tic-Tac-Toe • Memory Match • Checkers • in-room chat</p>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div>
+        <h1 style="font-size:22px">🎮 iBoto Games</h1>
+        <p class="muted small">Multiplayer rooms via Telegram • Tic-Tac-Toe • Memory Match • Checkers</p>
+      </div>
+      <div id="meChip" style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--card2);border:1px solid var(--line);border-radius:12px"></div>
+    </div>
+    <div id="globalErr" class="err"></div>
   </div>
 
   <div class="row">
-    <div class="card grow col">
-      <h2>Room</h2>
+    <!-- Left column: room management -->
+    <div class="card grow col" style="min-width:280px">
+      <h2>Create Room</h2>
       <div class="toolbar">
-        <select id="gameSelect" class="select">
-          <option value="ttt">Tic-Tac-Toe</option>
-          <option value="memory">Memory Match</option>
-          <option value="checkers">Checkers</option>
-        </select>
-        <input id="groupIdInput" class="input" placeholder="Group ID" />
-        <button id="btnCreate" class="btn primary">Create Room</button>
+        <div class="field">
+          <span class="label">Game</span>
+          <select id="gameSelect" class="select">
+            <option value="ttt">❌⭕ Tic-Tac-Toe</option>
+            <option value="memory">🧠 Memory Match</option>
+            <option value="checkers">🔴⚫ Checkers</option>
+          </select>
+        </div>
+        <div class="field">
+          <span class="label">Group ID (optional)</span>
+          <input id="groupIdInput" class="input" placeholder="e.g. -1001234567890" />
+        </div>
       </div>
+      <button id="btnCreate" class="btn primary">➕ Create Room</button>
+
+      <div class="sep"></div>
+
+      <h2>Join Room</h2>
       <div class="toolbar">
-        <input id="roomInput" class="input mono" placeholder="Room ID" />
-        <button id="btnJoin" class="btn good">Join Room</button>
-        <button id="btnRefresh" class="btn">Refresh</button>
-        <button id="btnShare" class="btn warn">Copy Join Link</button>
+        <div class="field">
+          <span class="label">Room ID</span>
+          <input id="roomInput" class="input mono" placeholder="paste room id here" />
+        </div>
+        <button id="btnJoin" class="btn good" style="margin-top:20px">Join</button>
       </div>
-      <div class="small muted">Start param format supported: <span class="mono">g_-1001234567890</span> or <span class="mono">r_roomid</span>.</div>
+
+      <div class="sep"></div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h2>Active Rooms</h2>
+        <div style="display:flex;gap:6px">
+          <input id="filterGroup" class="input" placeholder="filter by group id" style="width:160px;font-size:13px;padding:6px 8px"/>
+          <button id="btnBrowse" class="btn" style="padding:6px 10px;font-size:13px">🔍</button>
+        </div>
+      </div>
+      <div id="roomList"><div class="muted small">No rooms loaded. Press 🔍 to browse.</div></div>
+
+      <div class="sep"></div>
+      <div class="toolbar">
+        <button id="btnShare" class="btn warn">📋 Copy Join Link</button>
+        <button id="btnNewRound" class="btn hidden">🔄 New Round</button>
+      </div>
+
       <div id="roomMeta" class="small muted"></div>
     </div>
 
-    <div class="card grow col">
+    <!-- Right column: players -->
+    <div class="card grow col" style="min-width:220px">
       <h2>Players</h2>
-      <div id="players" class="players"></div>
+      <div id="players" class="players"><div class="muted">No players yet.</div></div>
     </div>
   </div>
 
   <div class="row" style="margin-top:12px">
+    <!-- Game board -->
     <div class="card grow col">
       <h2 id="gameTitle">Game</h2>
       <div id="status" class="muted"></div>
       <div id="boardWrap"></div>
-      <div id="gameButtons" class="toolbar hidden">
-        <button id="btnNew" class="btn">New Round</button>
-      </div>
     </div>
 
-    <div class="card grow col">
+    <!-- Chat -->
+    <div class="card grow col" style="min-width:240px">
       <h2>Chat</h2>
       <div id="chatBox" class="chatbox"></div>
       <div class="toolbar">
-        <input id="chatInput" class="input" placeholder="Type a message..." />
+        <input id="chatInput" class="input" placeholder="Type a message…" style="flex:1"/>
         <button id="btnSend" class="btn primary">Send</button>
       </div>
     </div>
   </div>
+
 </div>
 
 <script>
+// ─── Telegram integration ──────────────────────────────────────────────────
 const tg = window.Telegram?.WebApp || null;
 if (tg) { try { tg.ready(); tg.expand(); tg.disableVerticalSwipes?.(); } catch(e){} }
 
+// ─── Config — change BOT_USERNAME to your bot's username ──────────────────
 const CONFIG = {
-  API_BASE: "",
+  API_BASE: "",          // empty = same origin (server.js serves this file)
   BOT_USERNAME: "YOUR_BOT_USERNAME"
 };
 
+// ─── Helpers ──────────────────────────────────────────────────────────────
 const el = id => document.getElementById(id);
+
+function h(s) {
+  return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+function initials(name) {
+  return String(name||"P").trim().split(/\s+/).slice(0,2).map(x=>x[0]?.toUpperCase()||"").join("") || "P";
+}
+function nowTs() { return Math.floor(Date.now()/1000); }
+
+function api(path, opts = {}) {
+  return fetch(CONFIG.API_BASE + path, {
+    headers: { "Content-Type": "application/json" },
+    ...opts
+  }).then(async r => {
+    let j;
+    try { j = await r.json(); } catch(e) { j = {}; }
+    if (!r.ok || j.ok === false) throw new Error(j.error || "HTTP " + r.status);
+    return j;
+  });
+}
+
+function showError(msg) {
+  el("globalErr").textContent = msg ? "⚠ " + msg : "";
+}
+
+// ─── State ────────────────────────────────────────────────────────────────
 const state = {
   me: null,
   room: null,
@@ -123,225 +242,286 @@ const state = {
   startParam: null
 };
 
-function api(path, opts={}) {
-  return fetch((CONFIG.API_BASE || "") + path, {
-    headers: {"Content-Type":"application/json"},
-    ...opts
-  }).then(async r => {
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok || j.ok === false) {
-      throw new Error(j.error || ("HTTP " + r.status));
-    }
-    return j;
-  });
-}
-
-function h(s){
-  return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-}
-function initials(name){
-  const parts = String(name||"P").trim().split(/\s+/).slice(0,2);
-  return parts.map(x=>x[0]?.toUpperCase()||"").join("") || "P";
-}
-function nowTs(){ return Math.floor(Date.now()/1000); }
-
-function getTelegramUser(){
+// ─── Telegram user ────────────────────────────────────────────────────────
+function getTelegramUser() {
   const u = tg?.initDataUnsafe?.user;
   if (u) {
     return {
-      id: Number(u.id || 0),
-      username: u.username || "",
-      first_name: u.first_name || "",
-      last_name: u.last_name || "",
-      display_name: [u.first_name, u.last_name].filter(Boolean).join(" ") || u.username || ("user_" + u.id),
-      photo_url: u.photo_url || "",
-      premium: !!u.is_premium
+      id:           Number(u.id || 0),
+      username:     u.username || "",
+      first_name:   u.first_name || "",
+      last_name:    u.last_name || "",
+      display_name: [u.first_name, u.last_name].filter(Boolean).join(" ") || u.username || ("user_"+u.id),
+      photo_url:    u.photo_url || "",
+      premium:      !!u.is_premium
     };
   }
-  return {
-    id: 0,
-    username: "",
-    first_name: "",
-    last_name: "",
-    display_name: "Local User",
-    photo_url: "",
-    premium: false
-  };
+  // Fallback for browser testing (no Telegram context)
+  const stored = localStorage.getItem("tg_dev_user");
+  if (stored) return JSON.parse(stored);
+  const devId = Math.floor(Math.random()*1e9);
+  const devUser = { id: devId, username: "", first_name: "Dev", last_name: "User"+devId,
+    display_name: "Dev User "+devId, photo_url: "", premium: false };
+  localStorage.setItem("tg_dev_user", JSON.stringify(devUser));
+  return devUser;
 }
 
-function getStartParam(){
+function getStartParam() {
   const tgParam = tg?.initDataUnsafe?.start_param || null;
   if (tgParam) return tgParam;
   const qs = new URLSearchParams(location.search);
   return qs.get("startapp") || qs.get("tgWebAppStartParam") || null;
 }
 
-function setStatus(txt){ el("status").innerHTML = txt; }
+// ─── Render helpers ───────────────────────────────────────────────────────
+function renderMeChip(user) {
+  const chip = el("meChip");
+  if (!user) { chip.innerHTML = ""; return; }
+  const photo = user.photo_url
+    ? `<img class="avatar" src="${h(user.photo_url)}" style="width:28px;height:28px" alt="">`
+    : `<div class="avatar ph" style="width:28px;height:28px;font-size:12px">${h(initials(user.display_name))}</div>`;
+  chip.innerHTML = `${photo}<span style="font-size:13px">${h(user.display_name)}</span>`;
+}
 
-function renderPlayers(room){
+function renderMeta(room) {
+  if (!room) { el("roomMeta").innerHTML = ""; return; }
+  const statusCls = room.status;
+  el("roomMeta").innerHTML = `
+    <span class="mono">Room: ${h(room.room_id)}</span> •
+    Group: <span class="mono">${h(String(room.group_id ?? "none"))}</span> •
+    Game: <b>${h(room.game)}</b> •
+    <span class="badge-status ${statusCls}">${h(room.status)}</span>
+  `;
+}
+
+function renderPlayers(room) {
   const root = el("players");
   const players = room?.players || [];
+  if (!players.length) { root.innerHTML = `<div class="muted">No players yet.</div>`; return; }
+
+  const roleLabels = {
+    ttt: ["✖️ X","⭕ O"],
+    memory: ["Player 1","Player 2"],
+    checkers: ["🔴 Red","⚫ Black"]
+  };
+  const roles = roleLabels[room?.game] || ["P1","P2"];
+
   root.innerHTML = players.map((p, idx) => {
-    const photo = p.photo_url ? `<img class="avatar" src="${h(p.photo_url)}" alt="">` :
-      `<div class="avatar ph">${h(initials(p.display_name || p.first_name || "P"))}</div>`;
-    const role = room.game === "checkers" ? (idx===0 ? "Red" : "Black") :
-                 room.game === "ttt" ? (idx===0 ? "X" : "O") :
-                 (idx===0 ? "Player 1" : "Player 2");
+    const photo = p.photo_url
+      ? `<img class="avatar" src="${h(p.photo_url)}" alt="">`
+      : `<div class="avatar ph">${h(initials(p.display_name || p.first_name || "P"))}</div>`;
+    const isMe = Number(p.id) === Number(state.me?.id);
     return `
-      <div class="player">
+      <div class="player" style="${isMe ? "border-color:var(--accent)" : ""}">
         ${photo}
         <div style="min-width:0">
-          <div style="font-weight:700">${h(p.display_name || p.first_name || ("user_"+p.id))}</div>
-          <div class="small muted mono">${h(String(p.id))}${p.username ? " • @" + h(p.username) : ""}</div>
-          <div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap">
-            <span class="pill">${h(role)}</span>
-            ${p.premium ? `<span class="pill">Premium</span>` : ``}
+          <div style="font-weight:700">${h(p.display_name || p.first_name || "user_"+p.id)}${isMe ? " 👤" : ""}</div>
+          <div class="small muted mono">${h(String(p.id))}${p.username ? " @"+h(p.username) : ""}</div>
+          <div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">
+            <span class="pill">${h(roles[idx] || ("P"+(idx+1)))}</span>
+            ${p.premium ? `<span class="pill" style="border-color:#ffd166;color:#ffd166">⭐ Premium</span>` : ""}
           </div>
         </div>
       </div>
     `;
-  }).join("") || `<div class="muted">No players yet.</div>`;
+  }).join("");
 }
 
-function renderMeta(room){
-  el("roomMeta").innerHTML = room ? `
-    Room: <span class="mono">${h(room.room_id)}</span> •
-    Group: <span class="mono">${h(String(room.group_id || ""))}</span> •
-    Game: <b>${h(room.game)}</b> •
-    Status: <b>${h(room.status)}</b>
-  ` : "";
-}
-
-function renderChat(room){
+function renderChat(room) {
   const box = el("chatBox");
   const msgs = room?.chat || [];
-  box.innerHTML = msgs.map(m => `
-    <div class="msg ${Number(m.user_id) === Number(state.me?.id) ? "me":""}">
-      <div class="small"><b>${h(m.display_name || ("user_"+m.user_id))}</b> <span class="muted mono">${h(String(m.user_id))}</span></div>
-      <div>${h(m.text)}</div>
-    </div>
-  `).join("");
+  if (!msgs.length) { box.innerHTML = `<div class="muted small">No messages yet.</div>`; return; }
+  box.innerHTML = msgs.map(m => {
+    const isMe = Number(m.user_id) === Number(state.me?.id);
+    return `
+      <div class="msg ${isMe ? "me" : ""}">
+        <div class="small" style="display:flex;gap:6px;align-items:center">
+          <b>${h(m.display_name || ("user_"+m.user_id))}</b>
+          <span class="muted mono">${h(String(m.user_id))}</span>
+        </div>
+        <div style="margin-top:2px">${h(m.text)}</div>
+      </div>
+    `;
+  }).join("");
   box.scrollTop = box.scrollHeight;
 }
 
-function myPlayerIndex(room){
-  return (room.players || []).findIndex(p => Number(p.id) === Number(state.me.id));
+function myPlayerIndex(room) {
+  return (room?.players || []).findIndex(p => Number(p.id) === Number(state.me?.id));
 }
 
-function renderTtt(room){
+// ─── Game renderers ───────────────────────────────────────────────────────
+function renderTtt(room) {
   const s = room.state || {};
   const board = s.board || Array(9).fill(".");
-  const root = document.createElement("div");
-  root.className = "grid3";
+  const wrap = document.createElement("div");
+  wrap.className = "grid3";
   board.forEach((v, i) => {
     const b = document.createElement("button");
     b.className = "cell";
     b.textContent = v === "." ? "·" : v;
     b.disabled = room.status !== "playing" || v !== ".";
-    b.onclick = () => sendGameAction({type:"ttt_play", cell:i});
-    root.appendChild(b);
+    b.onclick = () => sendGameAction({ type:"ttt_play", cell:i });
+    wrap.appendChild(b);
   });
   const meIdx = myPlayerIndex(room);
   const mySide = meIdx === 0 ? "X" : meIdx === 1 ? "O" : "?";
-  setStatus(`Turn: <b>${h(s.turn || "?")}</b> • Your side: <b>${h(mySide)}</b> ${s.winner ? "• Winner: <b>"+h(String(s.winner))+"</b>" : ""}`);
-  return root;
+  const info = s.winner
+    ? `<b>${s.winner === "Draw" ? "Draw!" : "Winner: "+h(s.winner)+"!"}</b>`
+    : `Turn: <b>${h(s.turn||"?")}</b> • You are: <b>${h(mySide)}</b>`;
+  el("status").innerHTML = info;
+  return wrap;
 }
 
-function renderMemory(room){
+function renderMemory(room) {
   const s = room.state || {};
   const tiles = s.tiles || [];
-  const root = document.createElement("div");
-  root.className = "grid4";
+  const wrap = document.createElement("div");
+  wrap.className = "grid4";
+  const lockedNow = s.lock_until && s.lock_until > nowTs();
   tiles.forEach((t, i) => {
     const b = document.createElement("button");
     b.className = "mem";
     b.textContent = t.matched ? "✅" : t.revealed ? t.value : "🟦";
-    b.disabled = room.status !== "playing" || t.matched || (s.lock_until && s.lock_until > nowTs());
-    b.onclick = () => sendGameAction({type:"memory_pick", index:i});
-    root.appendChild(b);
+    b.disabled = room.status !== "playing" || t.matched || t.revealed || lockedNow;
+    b.onclick = () => sendGameAction({ type:"memory_pick", index:i });
+    wrap.appendChild(b);
   });
   const meIdx = myPlayerIndex(room);
   const scores = s.scores || [0,0];
-  const turnText = (s.turn === 0 ? "Player 1" : "Player 2");
-  setStatus(`Turn: <b>${h(turnText)}</b> • You: <b>${h(meIdx === 0 ? "Player 1" : meIdx === 1 ? "Player 2" : "?")}</b> • Score ${scores[0]}:${scores[1]} ${s.winner !== null && s.winner !== undefined ? "• Winner: <b>"+h(String(s.winner))+"</b>" : ""}`);
-  return root;
+  const turnName = s.turn === 0 ? "Player 1" : "Player 2";
+  const myName   = meIdx === 0 ? "Player 1" : meIdx === 1 ? "Player 2" : "—";
+  const winText  = s.winner !== null && s.winner !== undefined
+    ? `<b>${s.winner === "Draw" ? "Draw!" : "P"+(Number(s.winner)+1)+" wins!"}</b>`
+    : `Turn: <b>${h(turnName)}</b> • You: <b>${h(myName)}</b>`;
+  el("status").innerHTML = `${winText} • Score <b>${scores[0]}:${scores[1]}</b>`;
+  return wrap;
 }
 
-function renderCheckers(room){
+function renderCheckers(room) {
   const s = room.state || {};
   const board = s.board || Array.from({length:8},()=>Array(8).fill("."));
   const selected = s.selected;
   const targets = s.valid_targets || [];
-  const root = document.createElement("div");
-  root.className = "grid8";
-  for(let r=0;r<8;r++){
-    for(let c=0;c<8;c++){
+  const wrap = document.createElement("div");
+  wrap.className = "grid8";
+  const pieceEmoji = { ".":"", "r":"🔴", "R":"❤️", "b":"⚫", "B":"🖤" };
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
       const idx = r*8+c;
-      const dark = ((r+c)%2===1);
+      const dark = (r+c)%2 === 1;
       const sq = document.createElement("button");
-      sq.className = `sq ${dark ? "dark":"light"} ${selected===idx ? "sel":""} ${targets.includes(idx) ? "target":""}`;
-      const v = board[r][c];
-      sq.textContent = ({
-        ".":"", "r":"🔴", "R":"❤️", "b":"⚫️", "B":"🖤"
-      })[v] ?? "";
+      sq.className = `sq ${dark?"dark":"light"}${selected===idx?" sel":""}${targets.includes(idx)?" target":""}`;
+      sq.textContent = pieceEmoji[board[r][c]] ?? "";
       sq.onclick = () => {
-        if (targets.includes(idx)) sendGameAction({type:"checkers_move", index:idx});
-        else sendGameAction({type:"checkers_select", index:idx});
+        if (targets.includes(idx)) sendGameAction({ type:"checkers_move", index:idx });
+        else sendGameAction({ type:"checkers_select", index:idx });
       };
-      root.appendChild(sq);
+      wrap.appendChild(sq);
     }
   }
   const meIdx = myPlayerIndex(room);
   const mySide = meIdx === 0 ? "R" : meIdx === 1 ? "B" : "?";
-  setStatus(`Turn: <b>${h(s.turn || "?")}</b> • Your side: <b>${h(mySide)}</b> ${s.winner ? "• Winner: <b>"+h(String(s.winner))+"</b>" : ""}`);
-  return root;
+  const info = s.winner
+    ? `<b>Winner: ${h(s.winner)}</b>`
+    : `Turn: <b>${h(s.turn||"?")}</b> • You: <b>${h(mySide)}</b>`;
+  el("status").innerHTML = info;
+  return wrap;
 }
 
-function renderGame(room){
+function renderGame(room) {
   el("gameTitle").textContent = ({
-    ttt:"❌⭕ Tic-Tac-Toe",
-    memory:"🧠 Memory Match",
-    checkers:"🔴⚫ Checkers"
+    ttt:      "❌⭕ Tic-Tac-Toe",
+    memory:   "🧠 Memory Match",
+    checkers: "🔴⚫ Checkers"
   })[room.game] || "Game";
+
   const wrap = el("boardWrap");
   wrap.innerHTML = "";
-  if (!room) return;
-  if (room.game === "ttt") wrap.appendChild(renderTtt(room));
-  if (room.game === "memory") wrap.appendChild(renderMemory(room));
+
+  if (room.players.length < 2 && room.status === "waiting") {
+    el("status").innerHTML = `<span class="muted">⏳ Waiting for second player to join…</span>`;
+    return;
+  }
+  if (!room.state) return;
+
+  if (room.game === "ttt")      wrap.appendChild(renderTtt(room));
+  if (room.game === "memory")   wrap.appendChild(renderMemory(room));
   if (room.game === "checkers") wrap.appendChild(renderCheckers(room));
+
+  // Show/hide new round button
+  const btnNR = el("btnNewRound");
+  if (room.status === "finished") btnNR.classList.remove("hidden");
+  else btnNR.classList.add("hidden");
 }
 
-async function refreshRoom(){
-  if (!state.room?.room_id) return;
-  const room = await api(`/api/room/state?room_id=${encodeURIComponent(state.room.room_id)}`);
-  state.room = room.room;
-  renderAll();
+// ─── Room list rendering ──────────────────────────────────────────────────
+function renderRoomList(roomsArr) {
+  const list = el("roomList");
+  if (!roomsArr || !roomsArr.length) {
+    list.innerHTML = `<div class="muted small">No rooms found.</div>`;
+    return;
+  }
+  list.innerHTML = roomsArr.map(r => {
+    const gameIcon = { ttt:"❌", memory:"🧠", checkers:"🔴" }[r.game] || "🎮";
+    const active = state.room?.room_id === r.room_id ? " active" : "";
+    return `
+      <div class="room-item${active}" data-id="${h(r.room_id)}" onclick="quickJoin('${h(r.room_id)}')">
+        <div>
+          <span>${gameIcon}</span>
+          <span class="mono small" style="margin-left:4px">${h(r.room_id)}</span>
+          ${r.group_id ? `<span class="muted small"> • 👥 ${h(String(r.group_id))}</span>` : ""}
+        </div>
+        <div style="display:flex;gap:5px;align-items:center">
+          <span class="ri-badge">${r.players.length}/2</span>
+          <span class="ri-badge badge-status ${r.status}">${h(r.status)}</span>
+        </div>
+      </div>
+    `;
+  }).join("");
 }
-function startPolling(){
-  stopPolling();
-  state.pollTimer = setInterval(() => refreshRoom().catch(console.error), 1200);
+
+async function quickJoin(roomId) {
+  el("roomInput").value = roomId;
+  await joinRoom();
 }
-function stopPolling(){
-  if (state.pollTimer) clearInterval(state.pollTimer);
-  state.pollTimer = null;
-}
-function renderAll(){
+
+// ─── Full re-render ───────────────────────────────────────────────────────
+function renderAll() {
   renderMeta(state.room);
   renderPlayers(state.room);
   renderChat(state.room);
   if (state.room) renderGame(state.room);
+  else { el("status").innerHTML = ""; el("boardWrap").innerHTML = ""; }
+  showError("");
 }
 
-async function createRoom(){
-  const game = el("gameSelect").value;
+// ─── Polling ──────────────────────────────────────────────────────────────
+async function refreshRoom() {
+  if (!state.room?.room_id) return;
+  const res = await api(`/api/room/state?room_id=${encodeURIComponent(state.room.room_id)}`);
+  state.room = res.room;
+  renderAll();
+}
+function startPolling() {
+  stopPolling();
+  state.pollTimer = setInterval(() => refreshRoom().catch(e => showError(e.message)), 1500);
+}
+function stopPolling() {
+  if (state.pollTimer) clearInterval(state.pollTimer);
+  state.pollTimer = null;
+}
+
+// ─── API actions ──────────────────────────────────────────────────────────
+async function createRoom() {
+  const game    = el("gameSelect").value;
   const groupId = el("groupIdInput").value.trim();
   const res = await api("/api/room/create", {
-    method:"POST",
+    method: "POST",
     body: JSON.stringify({
       group_id: groupId ? Number(groupId) : null,
       game,
-      user: state.me,
-      start_param: state.startParam || ""
+      user: state.me
     })
   });
   state.room = res.room;
@@ -349,90 +529,120 @@ async function createRoom(){
   renderAll();
   startPolling();
 }
-async function joinRoom(){
+
+async function joinRoom() {
   const roomId = el("roomInput").value.trim();
-  if (!roomId) return alert("Enter room id");
+  if (!roomId) { showError("Enter a Room ID first"); return; }
   const res = await api("/api/room/join", {
-    method:"POST",
-    body: JSON.stringify({
-      room_id: roomId,
-      user: state.me,
-      start_param: state.startParam || ""
-    })
+    method: "POST",
+    body: JSON.stringify({ room_id: roomId, user: state.me })
   });
   state.room = res.room;
   renderAll();
   startPolling();
 }
-async function sendChat(){
-  if (!state.room?.room_id) return;
+
+async function sendChat() {
+  if (!state.room?.room_id) { showError("Join a room first"); return; }
   const text = el("chatInput").value.trim();
   if (!text) return;
   await api("/api/room/chat", {
-    method:"POST",
-    body: JSON.stringify({
-      room_id: state.room.room_id,
-      user: state.me,
-      text
-    })
+    method: "POST",
+    body: JSON.stringify({ room_id: state.room.room_id, user: state.me, text })
   });
   el("chatInput").value = "";
   await refreshRoom();
 }
-async function sendGameAction(action){
+
+async function sendGameAction(action) {
   if (!state.room?.room_id) return;
-  await api("/api/room/action", {
-    method:"POST",
-    body: JSON.stringify({
-      room_id: state.room.room_id,
-      user: state.me,
-      action
-    })
+  try {
+    await api("/api/room/action", {
+      method: "POST",
+      body: JSON.stringify({ room_id: state.room.room_id, user: state.me, action })
+    });
+  } catch(e) {
+    showError(e.message);
+  }
+  await refreshRoom();
+}
+
+async function newRound() {
+  if (!state.room?.room_id) return;
+  await api("/api/room/newround", {
+    method: "POST",
+    body: JSON.stringify({ room_id: state.room.room_id })
   });
   await refreshRoom();
 }
 
-function fillFromStartParam(){
+async function browseRooms() {
+  const gid = el("filterGroup").value.trim();
+  let res;
+  if (gid) {
+    res = await api(`/api/rooms/by-group?group_id=${encodeURIComponent(gid)}`);
+  } else {
+    res = await api("/api/rooms");
+  }
+  renderRoomList(res.rooms || []);
+}
+
+function copyJoinLink() {
+  if (!state.room?.room_id) { showError("Create or join a room first"); return; }
+  const link = `https://t.me/${CONFIG.BOT_USERNAME}?startapp=r_${state.room.room_id}`;
+  navigator.clipboard?.writeText(link).then(() => {
+    if (tg?.showPopup) tg.showPopup({ title:"Copied!", message:link });
+    else alert("Join link copied:\n" + link);
+  }).catch(() => {
+    prompt("Copy this link:", link);
+  });
+}
+
+// ─── Start param auto-fill ────────────────────────────────────────────────
+function fillFromStartParam() {
   const sp = state.startParam || "";
   if (sp.startsWith("g_")) {
-    const gid = sp.slice(2);
-    el("groupIdInput").value = gid;
+    el("groupIdInput").value = sp.slice(2);
+    el("filterGroup").value  = sp.slice(2);
   }
   if (sp.startsWith("r_")) {
     el("roomInput").value = sp.slice(2);
   }
 }
 
-function copyJoinLink(){
-  if (!state.room?.room_id) return alert("Create or join a room first");
-  const link = `https://t.me/${CONFIG.BOT_USERNAME}?startapp=r_${state.room.room_id}`;
-  navigator.clipboard.writeText(link).then(() => {
-    if (tg?.showPopup) tg.showPopup({title:"Copied", message:"Join link copied"});
-    else alert("Join link copied");
-  });
-}
+// ─── Init ─────────────────────────────────────────────────────────────────
+function init() {
+  state.me          = getTelegramUser();
+  state.startParam  = getStartParam();
 
-function init(){
-  state.me = getTelegramUser();
-  state.startParam = getStartParam();
+  renderMeChip(state.me);
   fillFromStartParam();
 
-  el("btnCreate").onclick = () => createRoom().catch(e => alert(e.message));
-  el("btnJoin").onclick = () => joinRoom().catch(e => alert(e.message));
-  el("btnRefresh").onclick = () => refreshRoom().catch(e => alert(e.message));
-  el("btnSend").onclick = () => sendChat().catch(e => alert(e.message));
-  el("btnShare").onclick = () => copyJoinLink();
+  el("btnCreate").onclick  = () => createRoom().catch(e => showError(e.message));
+  el("btnJoin").onclick    = () => joinRoom().catch(e => showError(e.message));
+  el("btnSend").onclick    = () => sendChat().catch(e => showError(e.message));
+  el("btnShare").onclick   = () => copyJoinLink();
+  el("btnNewRound").onclick= () => newRound().catch(e => showError(e.message));
+  el("btnBrowse").onclick  = () => browseRooms().catch(e => showError(e.message));
+
   el("chatInput").addEventListener("keydown", ev => {
     if (ev.key === "Enter") sendChat().catch(console.error);
   });
 
+  // Auto-join via deep-link
   if (state.startParam?.startsWith("r_")) {
     joinRoom().catch(console.error);
   }
 
-  renderPlayers({players:[state.me]});
-  el("roomMeta").textContent = state.startParam ? ("Start param: " + state.startParam) : "";
+  // Auto-populate group id from param
+  if (state.startParam?.startsWith("g_")) {
+    browseRooms().catch(console.error);
+  }
+
+  // Initial player display
+  renderPlayers({ players:[state.me], game:"ttt" });
 }
+
 init();
 </script>
 </body>
